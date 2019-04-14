@@ -71,7 +71,9 @@ module ActiveSupport
           fork do
             DRb.stop_service
 
-            after_fork(worker)
+            begin
+              after_fork(worker)
+            rescue => setup_exception; end
 
             queue = DRbObject.new_with_uri(@url)
 
@@ -82,6 +84,10 @@ module ActiveSupport
               result   = Minitest.run_one_method(klass, method)
 
               begin
+                if setup_exception.present?
+                  result.failures.prepend Minitest::UnexpectedError.new(setup_exception)
+                end
+
                 queue.record(reporter, result)
               rescue DRb::DRbConnError
                 result.failures.each do |failure|
