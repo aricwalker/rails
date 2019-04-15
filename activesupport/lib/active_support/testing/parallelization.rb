@@ -83,11 +83,9 @@ module ActiveSupport
               reporter = job[2]
               result   = Minitest.run_one_method(klass, method)
 
-              begin
-                if setup_exception.present?
-                  result.failures.prepend Minitest::UnexpectedError.new(setup_exception)
-                end
+              add_setup_exception(result, setup_exception) if setup_exception.present?
 
+              begin
                 queue.record(reporter, result)
               rescue DRb::DRbConnError
                 result.failures.each do |failure|
@@ -109,6 +107,12 @@ module ActiveSupport
       def shutdown
         @queue_size.times { @queue << nil }
         @pool.each { |pid| Process.waitpid pid }
+      end
+
+      private
+
+      def add_setup_exception(result, setup_exception)
+        result.failures.prepend Minitest::UnexpectedError.new(setup_exception)
       end
     end
   end
